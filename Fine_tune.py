@@ -35,7 +35,8 @@ test_augs = torchvision.transforms.Compose([
 
 finetune_net = torchvision.models.resnet18(pretrained=True)
 finetune_net.fc = nn.Linear(finetune_net.fc.in_features, 2)
-# 权重初始化采用预训练模型的参数
+# 除了最后一层全连接层做随机初始化，前面的网络全部都采用预训练好的权重参数
+# 权重初始化采用预训练模型的参数，均匀分布采样初始化
 nn.init.xavier_uniform_(finetune_net.fc.weight)
 
 # 如果param_group=True，输出层中的模型参数将使⽤⼗倍的学习率
@@ -48,11 +49,12 @@ def train_fine_tuning(net, learning_rate, batch_size=8, num_epochs=5, param_grou
                 os.path.join(data_dir, 'test'), transform=test_augs), batch_size=batch_size)
     devices = d2l.try_all_gpus()
     loss = nn.CrossEntropyLoss(reduction="none")
-    if param_group:
-        params_1x = [param for name, param in net.named_parameters()
-            if name not in ["fc.weight", "fc.bias"]]
+    if param_group:   # 最后一层使用的学习率是前面网络学习率的10倍
+        params_1x = [param for name, param in net.named_parameters()   # 这个函数同时返回模型中的参数名称和参数本身
+                           if name not in ["fc.weight", "fc.bias"]]   # 把除了最后一层fc层的参数取出来
         trainer = torch.optim.SGD([{'params': params_1x}, {'params': net.fc.parameters(),
                   'lr': learning_rate * 10}], lr=learning_rate, weight_decay=0.001)
+        # fc层以前的layer学习率使用lr，fc层学习率使用lr*10
     else:
         trainer = torch.optim.SGD(net.parameters(), lr=learning_rate, weight_decay=0.001)
     d2l.train_ch13(net, train_iter, test_iter, loss, trainer, num_epochs,
