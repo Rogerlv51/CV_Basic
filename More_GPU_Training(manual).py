@@ -51,7 +51,7 @@ loss = nn.CrossEntropyLoss(reduction='none')
 # 对于⾼效的多GPU训练，我们需要两个基本操作。⾸先，我们需要向多个设备分发参数并附加梯度（get_params）。
 # 如果没有参数，就不可能在GPU上评估⽹络。第⼆，需要跨多个设备对参数求和，也就是说，需要⼀个allreduce函数。
 def get_params(params, device):    # 显然定义一个把参数写进device的函数
-    new_params = [p.to(device) for p in params]
+    new_params = [p.clone().to(device) for p in params]   # clone函数可加可不加
     for p in new_params:
         p.requires_grad_()
     return new_params
